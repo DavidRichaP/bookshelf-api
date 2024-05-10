@@ -12,10 +12,10 @@ const addBookHandler = (request, h) => {
     pageCount,
     readPage,
     reading,
-    finished,
   } = request.payload;
-  const addedAt = new Date().toISOString();
-  const updatedAt = addedAt;
+  const insertedAt = new Date().toISOString();
+  const finished = pageCount === readPage;
+  const updatedAt = insertedAt;
 
   const newBook = {
     name,
@@ -28,12 +28,9 @@ const addBookHandler = (request, h) => {
     readPage,
     reading,
     finished,
-    addedAt,
+    insertedAt,
     updatedAt,
   };
-
-  bookshelf.push(newBook);
-  const isSuccess = bookshelf.filter((book) => book.id === id).length > 0;
 
   if (name === undefined) {
     const response = h.response({
@@ -52,6 +49,9 @@ const addBookHandler = (request, h) => {
     response.code(400);
     return response;
   }
+
+  bookshelf.push(newBook);
+  const isSuccess = bookshelf.filter((book) => book.id === id).length > 0;
 
   if (isSuccess) {
     const response = h.response({
@@ -76,11 +76,7 @@ const addBookHandler = (request, h) => {
 const getAllBooksHandler = (request, h) => {
   const { name, reading, finished } = request.query;
 
-  let collection = bookshelf.map((book) => ({
-    id: book.id,
-    name: book.name,
-    publisher: book.publisher,
-  }));
+  let collection = bookshelf;
 
   if (name) {
     collection = collection.filter(
@@ -88,23 +84,26 @@ const getAllBooksHandler = (request, h) => {
     );
   }
 
-  if (reading !== undefined) {
-    const readingBool = reading === '1';
-
-    collection = collection.filter((book) => book.reading === readingBool);
+  if (reading) {
+    collection = collection.filter((book) => Number(book.reading) === Number(reading));
   }
 
-  if (finished !== undefined) {
-    const finishedBool = finished === '1';
-    collection = collection.filter((book) => book.finished === finishedBool);
+  if (finished) {
+    collection = collection.filter((book) => Number(book.finished) === Number(finished));
   }
 
-  return {
+  const response = h.response({
     status: 'success',
     data: {
-      books: collection,
+      books: collection.map((book) => ({
+        id: book.id,
+        name: book.name,
+        publisher: book.publisher,
+      })),
     },
-  };
+  });
+  response.code(200);
+  return response;
 };
 
 const getBookByIdHandler = (request, h) => {
@@ -141,7 +140,6 @@ const editBookDetailsByIdHandler = (request, h) => {
     pageCount,
     readPage,
     reading,
-    finished,
   } = request.payload;
 
   const updatedAt = new Date().toISOString();
@@ -166,6 +164,7 @@ const editBookDetailsByIdHandler = (request, h) => {
   }
 
   if (index !== -1) {
+    const finished = pageCount === readPage;
     bookshelf[index] = {
       ...bookshelf[index],
       name,
@@ -176,8 +175,8 @@ const editBookDetailsByIdHandler = (request, h) => {
       publisher,
       pageCount,
       readPage,
-      reading,
       finished,
+      reading,
       updatedAt,
     };
     const response = h.response({
